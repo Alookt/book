@@ -1,0 +1,27 @@
+.navs{
+   text-align:left;
+   top: 0;
+   text-decoration: none;
+   font-size: 1.6rem;
+
+}
+.header-title{
+    text-align: center;
+    text-decoration: overline;
+    text-decoration-color: #27ae60;
+    font-size: 1rem;
+    justify-content: center;
+    color: #212381;
+}
+.nav-list{
+    list-style: none;
+    display: flex;
+    justify-content: center;
+    gap: 0.3rem;
+}
+a{
+    text-decoration: none;
+    color: #212381;
+    margin: 0.5rem;
+    padding: 0.25rem;
+}
