@@ -1,6 +1,7 @@
 header {
     padding: 1rem 1.5rem;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+    background: radial-gradient(circle, rgba(59, 137, 173, 0.8)0%, rgba(175, 43, 43, 0.61)100%);
 }
 
 .navs {
@@ -18,6 +19,7 @@ header {
     text-decoration-color: #27ae60;
     font-size: 1.2rem;
     justify-content: center;
+    align-items: center;
     color: #212381;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -59,13 +61,14 @@ a {
     color: #212381;
     margin: 0.5rem;
     padding: 0.25rem;
-    text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.08);
+    text-shadow: 3px 0 0 rgba(188, 9, 204, 0.486);
     transition: transform 0.2s ease, color 0.2s ease;
 }
 
 a:hover {
     color: #27ae60;
-    transform: translateY(-1px);
+    transform: scale(2.05);
+    
 }
 
 @keyframes glitch {
