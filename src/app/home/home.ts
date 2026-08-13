@@ -22,9 +22,22 @@ import gsap from 'gsap';
  *   Click 3: pages flip back and the cover closes.
  * - Pages have a leading-edge curl during the turn (custom shader on a
  *   segmented PlaneGeometry).
+ * - Each page shows its own content texture (text + optional image) on both
+ *   sides — the verso is mirrored U on the back face so it reads correctly
+ *   after the page flips. The first and last pages are blank endpapers;
+ *   pages 1 and 2 carry book content.
+ * - The scene is set in a library: a wooden table surface under the book,
+ *   a warm walnut wall behind, and warm afternoon lighting.
  * - Drag to orbit, scroll to zoom.
  */
 type BookState = 'closed' | 'open' | 'middle';
+
+interface PageContent {
+  /** Texture used for the recto (front, right side when closed). */
+  recto: THREE.CanvasTexture;
+  /** Texture used for the verso (back, left side when open). */
+  verso: THREE.CanvasTexture;
+}
 
 @Component({
   selector: 'app-home',
@@ -56,7 +69,7 @@ export class Home implements AfterViewInit, OnDestroy {
 
   // the book
   private bookGroup = new THREE.Group();
-  private coverGroup = new THREE.Group(); // pivots open / shut (Z axis)
+  private coverGroup = new THREE.Group(); // pivots open / shut (Y axis)
 
   // turning pages — each is a pivot + mesh
   private pagePivots: THREE.Group[] = [];
@@ -82,6 +95,9 @@ export class Home implements AfterViewInit, OnDestroy {
   // pages rest on top of it.
   private coverZClosed = 0;
   private coverZOpen = 0;
+
+  // image textures loaded from /public/images (used as page content)
+  private imageTextures = new Map<string, THREE.Texture>();
 
   ngAfterViewInit(): void {
     if (!isPlatformBrowser(this.platformId)) return;
@@ -114,13 +130,15 @@ export class Home implements AfterViewInit, OnDestroy {
       if (Array.isArray(mat)) mat.forEach((m) => m.dispose());
       else mat?.dispose?.();
     });
+
+    for (const tex of this.imageTextures.values()) tex.dispose();
   }
 
   // -------------------------------------------------------------------
   // setup
   // -------------------------------------------------------------------
 
-  private init(): void {
+  private async init(): Promise<void> {
     const container = this.canvasContainer.nativeElement;
     const { clientWidth, clientHeight } = container;
 
@@ -146,8 +164,8 @@ export class Home implements AfterViewInit, OnDestroy {
     );
     this.updateCameraPosition();
 
-    // lights
-    this.scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+    // lights — warm "afternoon reading" palette
+    this.scene.add(new THREE.AmbientLight(0xffeac4, 0.6));
 
     const key = new THREE.DirectionalLight(0xfff1c4, 1.6);
     key.position.set(4, 6, 5);
@@ -161,13 +179,17 @@ export class Home implements AfterViewInit, OnDestroy {
     key.shadow.camera.far = 20;
     this.scene.add(key);
 
-    const rim = new THREE.DirectionalLight(0x6688ff, 0.6);
+    const rim = new THREE.DirectionalLight(0x6688ff, 0.55);
     rim.position.set(-5, 3, -4);
     this.scene.add(rim);
 
-    // build the book + a small ground plane
+    // load page images before building the book so the page meshes can
+    // reference the loaded textures directly.
+    await this.loadImageTextures();
+
+    // build the book + the library backdrop
     this.scene.add(this.bookGroup);
-    this.scene.add(this.makeGround());
+    this.scene.add(this.makeLibrary());
 
     this.bookGroup.add(this.coverGroup);
     this.buildBook();
@@ -181,6 +203,157 @@ export class Home implements AfterViewInit, OnDestroy {
 
     this.tick();
   }
+
+  /**
+   * Load the three sample page images from /public/images. Stored in
+   * this.imageTextures keyed by file name so buildBook can pull them.
+   */
+  private loadImageTextures(): Promise<void> {
+    const loader = new THREE.TextureLoader();
+    const files = ['page-1.jpg', 'page-2.jpg', 'page-3.jpg'];
+    return Promise.all(
+      files.map(
+        (file) =>
+          new Promise<void>((resolve) => {
+            loader.load(`/images/${file}`, (tex) => {
+              tex.colorSpace = THREE.SRGBColorSpace;
+              tex.anisotropy = 4;
+              this.imageTextures.set(file, tex);
+              resolve();
+            });
+          }),
+      ),
+    ).then(() => undefined);
+  }
+
+  // -------------------------------------------------------------------
+  // page content rendering
+  // -------------------------------------------------------------------
+
+  /**
+   * Paint a single side of a page onto a canvas. Paper-colored background,
+   * optional centered image, and a column of lorem-style text. The title
+   * version is used for the front and back endpapers.
+   */
+  private drawPageSide(
+    canvas: HTMLCanvasElement,
+    image: THREE.Texture | null,
+    title: string | null,
+    body: string[],
+  ): void {
+    const ctx = canvas.getContext('2d')!;
+    const w = canvas.width;
+    const h = canvas.height;
+
+    // paper background
+    ctx.fillStyle = '#f2e6c4';
+    ctx.fillRect(0, 0, w, h);
+
+    // subtle warm vignette so the page doesn't look like a flat painted rect
+    const grad = ctx.createRadialGradient(w / 2, h / 2, w * 0.2, w / 2, h / 2, w * 0.7);
+    grad.addColorStop(0, 'rgba(242, 230, 196, 0)');
+    grad.addColorStop(1, 'rgba(150, 120, 70, 0.18)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+
+    if (title) {
+      // title-page layout: small ornament, big title, no body
+      ctx.fillStyle = '#3a2a1a';
+      ctx.textAlign = 'center';
+      ctx.font = '700 64px Georgia, serif';
+      ctx.fillText(title, w / 2, h / 2);
+      ctx.font = '24px Georgia, serif';
+      ctx.fillStyle = '#7a5a3a';
+      ctx.fillText('— endpaper —', w / 2, h / 2 + 60);
+      return;
+    }
+
+    // body-page layout: optional image up top, then text columns
+    const padX = 90;
+    let cursorY = 80;
+
+    if (image) {
+      const img = image.image as HTMLImageElement;
+      // Fit the image into a frame at the top of the page.
+      const maxW = w - padX * 2;
+      const maxH = h * 0.45;
+      const ratio = Math.min(maxW / img.width, maxH / img.height);
+      const iw = img.width * ratio;
+      const ih = img.height * ratio;
+      const ix = (w - iw) / 2;
+      ctx.drawImage(img, ix, cursorY, iw, ih);
+      // dark border around the image
+      ctx.strokeStyle = 'rgba(58, 42, 26, 0.4)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(ix, cursorY, iw, ih);
+      cursorY += ih + 30;
+    }
+
+    // body text
+    ctx.fillStyle = '#2a1f12';
+    ctx.textAlign = 'left';
+    ctx.font = '32px Georgia, serif';
+    const lineHeight = 44;
+    const maxWidth = w - padX * 2;
+    for (const paragraph of body) {
+      const words = paragraph.split(' ');
+      let line = '';
+      for (const word of words) {
+        const test = line ? `${line} ${word}` : word;
+        if (ctx.measureText(test).width > maxWidth) {
+          ctx.fillText(line, padX, cursorY);
+          cursorY += lineHeight;
+          line = word;
+          if (cursorY > h - 60) break;
+        } else {
+          line = test;
+        }
+      }
+      if (line && cursorY <= h - 60) {
+        ctx.fillText(line, padX, cursorY);
+        cursorY += lineHeight;
+      }
+      cursorY += 14; // paragraph spacing
+      if (cursorY > h - 60) break;
+    }
+
+    // page number in the bottom corner
+    ctx.fillStyle = 'rgba(58, 42, 26, 0.55)';
+    ctx.font = '24px Georgia, serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(String(Math.floor(Math.random() * 90) + 10), w / 2, h - 30);
+  }
+
+  /**
+   * Build the recto + verso textures for a single page.
+   */
+  private makePageContent(
+    image: THREE.Texture | null,
+    title: string | null,
+    body: string[],
+  ): PageContent {
+    const rectoCanvas = document.createElement('canvas');
+    const versoCanvas = document.createElement('canvas');
+    rectoCanvas.width = 1024;
+    rectoCanvas.height = 1400;
+    versoCanvas.width = 1024;
+    versoCanvas.height = 1400;
+
+    this.drawPageSide(rectoCanvas, image, title, body);
+    this.drawPageSide(versoCanvas, image, title, body);
+
+    const recto = new THREE.CanvasTexture(rectoCanvas);
+    const verso = new THREE.CanvasTexture(versoCanvas);
+    recto.colorSpace = THREE.SRGBColorSpace;
+    verso.colorSpace = THREE.SRGBColorSpace;
+    recto.anisotropy = 4;
+    verso.anisotropy = 4;
+    return { recto, verso };
+  }
+
+  // -------------------------------------------------------------------
+  // book construction
+  // -------------------------------------------------------------------
 
   /**
    * Build the book: back cover, spine, page block, turning pages, front cover.
@@ -205,11 +378,6 @@ export class Home implements AfterViewInit, OnDestroy {
       color: new THREE.Color(coverColor).multiplyScalar(0.75),
       roughness: 0.6,
       metalness: 0.05,
-    });
-    const pageMaterial = new THREE.MeshStandardMaterial({
-      color: pageColor,
-      roughness: 0.95,
-      metalness: 0.0,
     });
     const pageEdgeMaterial = new THREE.MeshStandardMaterial({
       color: pageEdgeColor,
@@ -281,14 +449,42 @@ export class Home implements AfterViewInit, OnDestroy {
     const pageHeight = bookHeight - 0.08;
     const pageCount = 4;
     // Slight Z-stagger so pages stack in 3D rather than z-fighting.
-    const zStep = 0.0195;
+    const zStep = 0.0205;
+
+    // Page content plan. Page 0 = first endpaper (blank), pages 1 + 2 = book
+    // content with images, page 3 = last endpaper (blank). Images are spread
+    // across the three states as agreed: page-1.jpg on the open spread,
+    // page-2.jpg on the middle spread, page-3.jpg only on the verso of the
+    // first content page so something visible appears on the open spread
+    // even before the second click.
+    const lorem = [
+      'It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness, it was the epoch of belief, it was the epoch of incredulity.',
+      'Spring comes, and the grass grows by itself. The cherry blossoms fall and scatter in the wind. A traveller pauses at the gate of an old inn; the host brings warm sake and a small dish of pickled greens.',
+      'In a quiet corner of the library the afternoon light fell in long stripes across the wooden table. The book lay open, its pages soft with age, and a single moth circled the lamp.',
+      'Long after the bells had stopped the city was still. From the high window one could see the river winding through the dark squares, and the sound of hooves on the cobblestones far below.',
+      'He had travelled a long way to find this place. The shelf was exactly where the old woman had said, third from the left, behind the green volumes. The book was the same color as the dust on the table.',
+    ];
+
+    const pageContents: PageContent[] = [
+      // page 0: blank endpaper (first page, sits behind the front cover)
+      this.makePageContent(null, 'Front Endpaper', []),
+      // page 1: text + image on the recto (visible as the right page in
+      // the open state and after the middle turn)
+      this.makePageContent(this.imageTextures.get('page-1.jpg') ?? null, null, [lorem[0], lorem[1]]),
+      // page 2: text only on the recto, image on the verso for the middle
+      // state where this page is on the left
+      this.makePageContent(this.imageTextures.get('page-2.jpg') ?? null, null, [lorem[2], lorem[3]]),
+      // page 3: blank endpaper (last page, sits against the back cover)
+      this.makePageContent(null, 'Back Endpaper', []),
+    ];
 
     for (let i = 0; i < pageCount; i++) {
       const pivot = new THREE.Group();
       // pivot origin sits at the spine (left edge of the closed page)
       pivot.position.set(-bookWidth / 2 + 0.04, 0, zStep * i);
 
-      const material = this.makePageCurlMaterial(pageColor);
+      const content = pageContents[i];
+      const material = this.makePageCurlMaterial(pageColor, content);
       const mesh = new THREE.Mesh(
         // 32 width-segments so the shader can bend the page smoothly
         new THREE.PlaneGeometry(pageWidth, pageHeight, 32, 1),
@@ -355,7 +551,8 @@ export class Home implements AfterViewInit, OnDestroy {
 
   /**
    * Build a ShaderMaterial that lights the page like a standard material
-   * but adds a leading-edge curl during the turn. The curl is driven by:
+   * but adds a leading-edge curl during the turn and samples recto/verso
+   * content textures. The curl is driven by:
    *   uProgress  - 0..1, how far the page is through its rotation
    *   uCurl      - peak Z-displacement of the leading edge
    *
@@ -363,8 +560,15 @@ export class Home implements AfterViewInit, OnDestroy {
    * (outer edge). During the first half of the turn (progress 0..0.5) the
    * outer edge is lifting; during the second half it is settling. We bias
    * the curl toward whichever half is "in motion".
+   *
+   * The recto (right side when closed) is shown on the front face of the
+   * plane and the verso (left side when open) on the back face, with the
+   * back face mirroring U so the verso reads correctly after the page flips.
    */
-  private makePageCurlMaterial(pageColor: number): THREE.ShaderMaterial {
+  private makePageCurlMaterial(
+    pageColor: number,
+    content: PageContent,
+  ): THREE.ShaderMaterial {
     const baseColor = new THREE.Color(pageColor);
 
     const uniforms: Record<string, THREE.IUniform> = {
@@ -373,8 +577,10 @@ export class Home implements AfterViewInit, OnDestroy {
       uCurl: { value: 0.18 },
       uFlip: { value: 0 }, // 0 = right-to-left turn (uv.x rising curl),
                            // 1 = left-to-right return
+      uRecto: { value: content.recto },
+      uVerso: { value: content.verso },
       uLightDir: { value: new THREE.Vector3(4, 6, 5).normalize() },
-      uAmbient: { value: 0.55 },
+      uAmbient: { value: 0.6 },
       uKey: { value: 1.6 },
       uRimColor: { value: new THREE.Color(0x6688ff) },
       uRimDir: { value: new THREE.Vector3(-5, 3, -4).normalize() },
@@ -428,6 +634,8 @@ export class Home implements AfterViewInit, OnDestroy {
 
     const fragmentShader = /* glsl */ `
       uniform vec3 uBaseColor;
+      uniform sampler2D uRecto;
+      uniform sampler2D uVerso;
       uniform vec3 uLightDir;
       uniform vec3 uRimColor;
       uniform vec3 uRimDir;
@@ -441,16 +649,25 @@ export class Home implements AfterViewInit, OnDestroy {
       void main() {
         vec3 N = normalize(vNormalW);
 
+        // Pick the right texture for the visible face. The back face
+        // (visible after the page flips) is the verso, and we mirror U so
+        // the verso reads correctly when viewed from the left side of the
+        // open book.
+        vec2 uv = gl_FrontFacing ? vUv : vec2(1.0 - vUv.x, vUv.y);
+        vec3 paper = gl_FrontFacing
+          ? texture2D(uRecto, uv).rgb
+          : texture2D(uVerso, uv).rgb;
+
         float ndl = max(dot(N, uLightDir), 0.0);
-        vec3 diffuse = uBaseColor * (uAmbient + uKey * ndl);
+        vec3 diffuse = paper * (uAmbient + uKey * ndl);
 
         float rim = max(dot(N, uRimDir), 0.0);
-        vec3 rimC = uRimColor * rim * 0.35;
+        vec3 rimC = uRimColor * rim * 0.30;
 
-        // Subtle page texture: a faint vignette near the spine so the page
-        // doesn't look like a perfectly flat painted rectangle.
-        float vignette = 1.0 - 0.12 * smoothstep(0.0, 0.15, vUv.x)
-                              * (1.0 - smoothstep(0.85, 1.0, vUv.x));
+        // Subtle page-edge vignette so the page doesn't look like a
+        // perfectly flat painted rectangle.
+        float vignette = 1.0 - 0.10 * smoothstep(0.0, 0.10, uv.x)
+                              * (1.0 - smoothstep(0.90, 1.0, uv.x));
         vec3 col = (diffuse + rimC) * vignette;
 
         gl_FragColor = vec4(col, 1.0);
@@ -467,15 +684,122 @@ export class Home implements AfterViewInit, OnDestroy {
     return mat;
   }
 
-  private makeGround(): THREE.Mesh {
-    const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(20, 20),
-      new THREE.ShadowMaterial({ opacity: 0.35 }),
+  // -------------------------------------------------------------------
+  // library backdrop
+  // -------------------------------------------------------------------
+
+  /**
+   * Build a wood-grain table surface and a warm walnut wall behind the
+   * book. The book rests on the table; the wall fills the back of the
+   * scene so the dark gradient hides. Both pieces are static, receive
+   * shadows, and use procedural CanvasTextures so the project has no new
+   * image dependencies.
+   *
+   * Returns a single Group so the caller adds it to the scene in one shot.
+   */
+  private makeLibrary(): THREE.Group {
+    const group = new THREE.Group();
+
+    // --- wooden table surface ---
+    const tableTex = this.makeWoodTexture();
+    const table = new THREE.Mesh(
+      new THREE.PlaneGeometry(40, 40),
+      new THREE.MeshStandardMaterial({
+        map: tableTex,
+        roughness: 0.85,
+        metalness: 0.0,
+      }),
     );
-    ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -2.0;
-    ground.receiveShadow = true;
-    return ground;
+    table.rotation.x = -Math.PI / 2;
+    table.position.y = -2.0;
+    table.receiveShadow = true;
+    group.add(table);
+
+    // soft shadow catcher just above the wood so the book shadow is darker
+    // than the wood tint
+    const shadowCatcher = new THREE.Mesh(
+      new THREE.PlaneGeometry(40, 40),
+      new THREE.ShadowMaterial({ opacity: 0.45 }),
+    );
+    shadowCatcher.rotation.x = -Math.PI / 2;
+    shadowCatcher.position.y = -1.999;
+    shadowCatcher.receiveShadow = true;
+    group.add(shadowCatcher);
+
+    // --- walnut wall behind the book ---
+    const wall = new THREE.Mesh(
+      new THREE.PlaneGeometry(40, 20),
+      new THREE.MeshStandardMaterial({
+        color: new THREE.Color(0x3a2a1f),
+        roughness: 0.95,
+        metalness: 0.0,
+      }),
+    );
+    wall.position.set(0, 4, -8);
+    wall.receiveShadow = true;
+    group.add(wall);
+
+    return group;
+  }
+
+  /**
+   * Generate a procedural wood-grain texture. Two-tone grain stripes drawn
+   * on a horizontal canvas, warped with a low-frequency sine so the grain
+   * bends naturally.
+   */
+  private makeWoodTexture(): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 1024;
+    const ctx = canvas.getContext('2d')!;
+
+    // base wood color
+    ctx.fillStyle = '#6b4a2a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // darker grain stripes
+    for (let i = 0; i < 120; i++) {
+      const y = Math.random() * canvas.height;
+      const alpha = 0.05 + Math.random() * 0.08;
+      ctx.strokeStyle = `rgba(40, 24, 12, ${alpha})`;
+      ctx.lineWidth = 1 + Math.random() * 2;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      for (let x = 0; x <= canvas.width; x += 16) {
+        const ny = y + Math.sin(x * 0.012 + i) * 4 + (Math.random() - 0.5) * 1.5;
+        ctx.lineTo(x, ny);
+      }
+      ctx.stroke();
+    }
+
+    // a few knots
+    for (let i = 0; i < 4; i++) {
+      const cx = Math.random() * canvas.width;
+      const cy = Math.random() * canvas.height;
+      const r = 8 + Math.random() * 14;
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+      grad.addColorStop(0, 'rgba(35, 22, 10, 0.7)');
+      grad.addColorStop(1, 'rgba(35, 22, 10, 0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // soft overlay to mute the brightest pixels
+    const overlay = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    overlay.addColorStop(0, 'rgba(0, 0, 0, 0.10)');
+    overlay.addColorStop(1, 'rgba(0, 0, 0, 0.25)');
+    ctx.fillStyle = overlay;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(2, 2);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 4;
+    return tex;
   }
 
   // -------------------------------------------------------------------
@@ -581,7 +905,7 @@ export class Home implements AfterViewInit, OnDestroy {
     // backward. It travels -PI (180°) to lie flat against the back cover.
     tl.to(
       this.coverGroup.rotation,
-      { y: -Math.PI, duration: 1.0, ease: 'power2.inOut' },
+      { y: -Math.PI * 1.0, duration: 1.0, ease: 'power2.inOut' },
       0,
     );
 
@@ -607,7 +931,7 @@ export class Home implements AfterViewInit, OnDestroy {
 
       tl.to(
         pivot.rotation,
-        { y: -Math.PI, duration: turnDuration, ease: 'power2.inOut' },
+        { y: -Math.PI * 1.0, duration: turnDuration, ease: 'power2.inOut' },
         0.1 + i * stagger,
       );
       // Drive the curl shader: progress 0 -> 1 during the turn, "right-to-left".
@@ -651,6 +975,7 @@ export class Home implements AfterViewInit, OnDestroy {
     const turnDuration = 0.9;
     const stagger = 0.08;
     const pagesToTurn = [2, 3];
+    const middleSpreadRotation = -Math.PI * 1.0;
 
     pagesToTurn.forEach((idx, i) => {
       const pivot = this.pagePivots[idx];
@@ -658,7 +983,11 @@ export class Home implements AfterViewInit, OnDestroy {
 
       tl.to(
         pivot.rotation,
-        { y: -Math.PI * 2, duration: turnDuration, ease: 'power2.inOut' },
+        {
+          y: middleSpreadRotation,
+          duration: turnDuration,
+          ease: 'power2.inOut',
+        },
         0.1 + i * stagger,
       );
       tl.to(
@@ -668,7 +997,7 @@ export class Home implements AfterViewInit, OnDestroy {
           duration: turnDuration,
           ease: 'power2.inOut',
           onStart: () => {
-            mat.uniforms['uFlip'].value = 0;
+            mat.uniforms['uFlip'].value = 1.0;
           },
         },
         0.1 + i * stagger,

@@ -9,12 +9,17 @@
   width: 100%;
   height: 100%;
   overflow: hidden;
-  /* book3d uses a near-black with a hint of indigo; we mirror that */
-  background: radial-gradient(
-    ellipse at 50% 40%,
-    #1a1a2e 0%,
-    #0d0d18 80%
-  );
+  /* Library reading-room mood: warm walnut wall behind, wood tabletop below.
+     This sits behind the alpha canvas during scene load and around the
+     scene edges when the canvas is letterboxed. */
+  background:
+    linear-gradient(
+      to bottom,
+      #3a2a1f 0%,
+      #3a2a1f 55%,
+      #2a1f15 55%,
+      #2a1f15 100%
+    );
 }
 
 .book-overlay {
