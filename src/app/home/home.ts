@@ -99,6 +99,7 @@ export class Home implements AfterViewInit, OnDestroy {
   // image textures loaded from /public/images (used as page content)
   private imageTextures = new Map<string, THREE.Texture>();
 
+
   ngAfterViewInit(): void {
     if (!isPlatformBrowser(this.platformId)) return;
 
@@ -458,11 +459,11 @@ export class Home implements AfterViewInit, OnDestroy {
     // first content page so something visible appears on the open spread
     // even before the second click.
     const lorem = [
-      'It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness, it was the epoch of belief, it was the epoch of incredulity.',
-      'Spring comes, and the grass grows by itself. The cherry blossoms fall and scatter in the wind. A traveller pauses at the gate of an old inn; the host brings warm sake and a small dish of pickled greens.',
-      'In a quiet corner of the library the afternoon light fell in long stripes across the wooden table. The book lay open, its pages soft with age, and a single moth circled the lamp.',
-      'Long after the bells had stopped the city was still. From the high window one could see the river winding through the dark squares, and the sound of hooves on the cobblestones far below.',
-      'He had travelled a long way to find this place. The shelf was exactly where the old woman had said, third from the left, behind the green volumes. The book was the same color as the dust on the table.',
+    'Welcome to the most amazing paltform on the whole WWW',
+    'This is the platform where you can imagine as the best storytellers give you the best',
+    'You can choose from the variety we have in our site', 
+    'Remember to enjoy the site',
+    'You can sign up here`<button>Sign Up</button>` to get to reading or narrating your choice',
     ];
 
     const pageContents: PageContent[] = [
@@ -470,12 +471,12 @@ export class Home implements AfterViewInit, OnDestroy {
       this.makePageContent(null, 'Front Endpaper', []),
       // page 1: text + image on the recto (visible as the right page in
       // the open state and after the middle turn)
-      this.makePageContent(this.imageTextures.get('page-1.jpg') ?? null, null, [lorem[0], lorem[1]]),
+      this.makePageContent(this.imageTextures.get('page-1.jpg') ?? null, null, [lorem[0], lorem[2]]),
       // page 2: text only on the recto, image on the verso for the middle
       // state where this page is on the left
-      this.makePageContent(this.imageTextures.get('page-2.jpg') ?? null, null, [lorem[2], lorem[3]]),
+      this.makePageContent(null, null, [lorem[2], lorem[3]]),
       // page 3: blank endpaper (last page, sits against the back cover)
-      this.makePageContent(null, 'Back Endpaper', []),
+      this.makePageContent(this.imageTextures.get('page-2.jpg') ?? null, "", [lorem[4]]),
     ];
 
     for (let i = 0; i < pageCount; i++) {
@@ -921,7 +922,7 @@ export class Home implements AfterViewInit, OnDestroy {
 
     // First two pages turn (one already moved with the cover via visual
     // perception; turn an extra page or two for a clear spread).
-    const turnDuration = 0.9;
+    const turnDuration = 1.0;
     const stagger = 0.08;
     const pagesToTurn = [0, 1];
 
@@ -972,7 +973,7 @@ export class Home implements AfterViewInit, OnDestroy {
       },
     });
 
-    const turnDuration = 0.9;
+    const turnDuration = 1.3;
     const stagger = 0.08;
     const pagesToTurn = [2, 3];
     const middleSpreadRotation = -Math.PI * 1.0;
@@ -1035,7 +1036,7 @@ export class Home implements AfterViewInit, OnDestroy {
       0.1,
     );
 
-    const turnDuration = 0.9;
+    const turnDuration = 1.0;     
     const stagger = 0.08;
 
     // Reverse-order so the rightmost page settles first, mimicking how a

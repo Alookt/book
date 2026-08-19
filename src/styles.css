@@ -1,12 +1,17 @@
-/* You can add global styles to this file, and also import other style files */
-html, body, app-root, app-home {
+/* Global styles */
+html,
+body {
   width: 100%;
   height: 100%;
   margin: 0;
   padding: 0;
+  background-color: #f4e4bc; /* warm paper tone — Home paints over it, others inherit it */
+  color: #2a1f12;
+  font-family: Georgia, 'Times New Roman', serif;
 }
-body {
+
+app-root {
+  display: block;
   min-height: 100%;
-  background-color: #1a1a1a;
 }
 

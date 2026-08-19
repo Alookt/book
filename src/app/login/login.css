@@ -1,0 +1,19 @@
+:host {
+  display: block;
+  width: 100%;
+  min-height: 100%;
+  background-color: blueviolet;
+  box-sizing: border-box;
+  padding: 2rem;
+}
+
+.page {
+  max-width: 720px;
+  margin: 0 auto;
+  font-family: Georgia, 'Times New Roman', serif;
+  color: #fff;
+}
+
+.page h1 {
+  margin: 0 0 1rem;
+}
