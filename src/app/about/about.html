@@ -1,10 +1,15 @@
 <section class="page">
-  <h1>About 活字中毒</h1>
-  <p>about works!</p>
-  <p>
-    A small demo project that pairs a hand-built 3D book (Three.js + GSAP)
-    with a single-page Angular shell. This page is intentionally light —
-    it's here to prove the router link resolves and the routed component
-    actually paints.
-  </p>
+  <h1 class="hed">StoryBook</h1>
+  <div class="more" [style.color]="textColor">
+    <input
+      type="color"
+      class="text-color-picker"
+      aria-label="Choose text color"
+      [value]="textColor"
+      (input)="textColor = $any($event.target).value"
+    />
+    @for (sent of part; track sent) {
+      <p>{{ sent }}</p>
+    }
+  </div>
 </section>

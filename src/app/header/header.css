@@ -51,25 +51,29 @@ header {
 
 .nav-list {
     list-style: none;
-    display: flex;
+    display: grid;
     justify-content: center;
-    gap: 0.3rem;
+    gap: 0.04rem;
+    grid-template-columns: repeat(4, 1fr);
+
 }
 
 a {
     text-decoration: none;
-    color: #212381;
-    margin: 0.5rem;
-    padding: 0.25rem;
-    text-shadow: 3px 0 0 rgba(188, 9, 204, 0.486);
-    transition: transform 0.2s ease, color 0.2s ease;
+    grid-template-columns: repeat(3, 1fr);
+    color: #11dba9;
+    text-shadow: 2px 1px 0 rgba(188, 9, 204, 0.486);
+    animation: glitch-before 3s ease-in-out 2s infinite;
+    
 }
 
 a:hover {
-    color: #27ae60;
-    transform: scale(2.05);
-    
+    color: #102211;
+    font-weight: 800;
+    animation: none;
+
 }
+
 
 @keyframes glitch {
     0%, 100% {

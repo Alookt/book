@@ -736,7 +736,7 @@ export class Home implements AfterViewInit, OnDestroy {
         metalness: 0.0,
       }),
     );
-    wall.position.set(0, 4, -8);
+    wall.position.set(0, -4, -8);
     wall.receiveShadow = true;
     group.add(wall);
 

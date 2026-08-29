@@ -2,7 +2,9 @@
   display: block;
   width: 100%;
   min-height: 100%;
-  background-color: aquamarine;
+  background-image: url(../../../public/images/Spidy.jpg);
+  background-size: cover;
+  background-position: center;
   box-sizing: border-box;
   padding: 2rem;
 }
@@ -15,5 +17,41 @@
 }
 
 .page h1 {
-  margin: 0 0 1rem;
+  margin: 0 5rem 3rem;
+}
+
+.more {
+  position: relative;
+  margin: 0;
+  padding: 1rem;
+  border: 3px solid #281;
+  border-radius: 12px;
+  background-image: url(../../../public/images/sat.jpg);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  font-weight: 600;
+  font-style: italic;
+  font-family: serif;
+  color: rgb(214, 106, 17);
+  font-size: 32px;
+}
+
+.text-color-picker {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  width: 2.2rem;
+  height: 2.2rem;
+  border: 2px solid rgba(40, 40, 40, 0.8);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 0.1rem;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.more p {
+  margin: 0.5rem 0;
+  padding-top: 2.75rem;
 }
