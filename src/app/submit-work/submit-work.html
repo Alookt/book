@@ -1,0 +1,21 @@
+<div class="submit-container">
+  <h1>Submit Your Work</h1>
+  <form (submit)="onSubmit()" #submitForm="ngForm">
+    <div class="form-group">
+      <label>Author</label>
+      <input type="text" [value]="submission.author" readonly>
+    </div>
+    <div class="form-group">
+      <label>Text Content</label>
+      <textarea [(ngModel)]="submission.text" name="text" required placeholder="Enter your work here..."></textarea>
+    </div>
+    <div class="form-group">
+      <label>3D Object Link (Optional)</label>
+      <input type="text" [(ngModel)]="submission.threeDObject" name="threeDObject" placeholder="Link to 3D model (e.g. GLB/GLTF)">
+    </div>
+    <button type="submit" [disabled]="loading || !submitForm.form.valid">
+      {{ loading ? 'Submitting...' : 'Submit for Approval' }}
+    </button>
+  </form>
+  <p *ngIf="message" class="message">{{ message }}</p>
+</div>

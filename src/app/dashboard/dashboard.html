@@ -1,0 +1,62 @@
+<section class="page">
+  <h1>User Dashboard</h1>
+  <div *ngIf="loading">Loading profile...</div>
+  <div *ngIf="!loading && user" class="dashboard-container">
+
+    <div class="profile-card">
+      <h2>Your Profile</h2>
+      <p><strong>Username:</strong> {{ user.username }}</p>
+      <p><strong>Email:</strong> {{ user.email }}</p>
+      <p><strong>Name:</strong> {{ user.first_name }} {{ user.last_name }}</p>
+      <p><strong>Role:</strong> {{ user.role }}</p>
+      <div *ngIf="user.role === 'author'" class="author-actions">
+        <button class="btn-submit" routerLink="/submit-work">Submit Work</button>
+      </div>
+      <button class="btn-logout" (click)="onLogout()">Logout</button>
+    </div>
+
+    <div *ngIf="user.role === 'author' && authorWork" class="author-work-section">
+      <h2>Your Submitted Work</h2>
+      <div class="work-grid">
+        <div *ngFor="let item of authorWork.pending" class="work-card pending">
+          <h3>{{ item.author }}</h3>
+          <p>Status: <span class="status">Pending Approval</span></p>
+          <p>Submitted: {{ item.timestamp | date:'short' }}</p>
+        </div>
+        <div *ngFor="let item of authorWork.approved" class="work-card approved">
+          <h3>{{ item.title }}</h3>
+          <p>Status: <span class="status">Approved</span></p>
+          <p>Reads: <strong class="view-count">{{ item.views }}</strong></p>
+        </div>
+        <div *ngIf="!authorWork.pending.length && !authorWork.approved.length" class="empty">
+          You haven't submitted any work yet.
+        </div>
+      </div>
+    </div>
+
+    <div class="books-section">
+      <h2>Books</h2>
+      <div class="grid">
+        <div *ngFor="let book of books" class="card">
+          <h3>{{ book.title }}</h3>
+          <p><strong>Author:</strong> {{ book.author }}</p>
+          <p>{{ book.description }}</p>
+        </div>
+        <div *ngIf="books.length === 0" class="empty">No books available.</div>
+      </div>
+    </div>
+
+    <div class="recommendations-section" *ngIf="recommendations.length > 0">
+      <h2>Recommendations</h2>
+      <div class="grid">
+        <div *ngFor="let rec of recommendations" class="card rec-card" (click)="trackView(rec.id)">
+          <h3>{{ rec.title }}</h3>
+          <p><strong>Author:</strong> {{ rec.author }}</p>
+          <p>{{ rec.text }}</p>
+          <p class="view-hint">Click to read & track</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>

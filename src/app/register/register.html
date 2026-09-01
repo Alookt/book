@@ -1,5 +1,20 @@
 <section class="page">
   <h1>Create an account</h1>
-  <p>register works!</p>
-  <p>Sign-up form will live here.</p>
+  <form (submit)="onRegister()" #registerForm="ngForm">
+    <div class="form-group">
+      <label for="username">Username</label>
+      <input type="text" id="username" name="username" [(ngModel)]="userData.username" required>
+    </div>
+    <div class="form-group">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" [(ngModel)]="userData.email" required>
+    </div>
+    <div class="form-group">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" [(ngModel)]="userData.password" required>
+    </div>
+    <button type="submit" [disabled]="!registerForm.form.valid">Register</button>
+  </form>
+  <p *ngIf="errorMessage" class="error">{{ errorMessage }}</p>
+  <p>Already have an account? <a routerLink="/login">Login here</a></p>
 </section>
