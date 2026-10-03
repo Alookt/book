@@ -44,8 +44,8 @@ export default function AdminPage() {
         </div>
 
         <div className="mt-auto flex flex-col gap-2">
-          <NavItem icon={<Settings size={20} />} label="Settings" active={false} onClick={() => {}} />
-          <NavItem icon={<LogOut size={20} />} label="Logout" active={false} onClick={() => {}} />
+          <NavItem icon={<Settings size={20} />} label="Settings" active={false} onClick={() => alert('Settings clicked')} />
+          <NavItem icon={<LogOut size={20} />} label="Logout" active={false} onClick={() => alert('Logging out...')} />
         </div>
       </nav>
 
