@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Book {
+  id          String    @id @default(cuid())
+  title       String
+  author      String
+  description String?
+  coverImage  String?
+  visibility  Visibility @default(OPEN)
+  price       Float      @default(0.0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  segments    AtomicSegment[]
+  syncMaps    SyncMap[]
+}
+
+enum Visibility {
+  OPEN
+  PREMIUM
+}
+
+model AtomicSegment {
+  id          String   @id @default(cuid())
+  bookId      String
+  book        Book     @relation(fields: [bookId], references: [id])
+  content     String
+  orderIndex  Int
+  byteSize    Int
+  checksum    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([bookId, orderIndex])
+}
+
+model SyncMap {
+  id               String   @id @default(cuid())
+  bookId           String
+  book             Book     @relation(fields: [bookId], references: [id])
+  charIndex        Int
+  visualAssetId    String
+  audioTimestamp   Float
+  createdAt        DateTime @default(now())
+
+  @@index([bookId, charIndex])
+}
+
+model UserSession {
+  id             String   @id @default(cuid())
+  userId         String
+  bookId         String
+  segmentId      String?
+  charIndex      Int      @default(0)
+  audioTimestamp Float    @default(0.0)
+  updatedAt      DateTime @updatedAt
+
+  @@unique([userId, bookId])
+}

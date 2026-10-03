@@ -1,0 +1,193 @@
+# Multimodal Reactive Library Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Build a multimodal reading ecosystem with adaptive packet delivery, synchronized visuals/audio, and a glassmorphism admin panel.
+
+**Architecture:** Next.js frontend with a custom "OSI" transport layer using WebSockets and adaptive chunking. PostgreSQL backend with a SyncMap for multimodal coordination.
+
+**Tech Stack:** Next.js, Tailwind CSS, Framer Motion, Socket.io, PostgreSQL, Redis, Nginx.
+
+**Spec:** `docs/superpowers/specs/2026-10-02-multimodal-library-design.md`
+
+## Global Constraints
+- **Transport:** Adaptive packet splitting based on RTT/Bandwidth.
+- **Security:** End-to-End Encryption (E2EE) for content packets.
+- **UI:** Glassmorphism (backdrop-blur) for Admin; Cinematic for Reader.
+- **SEO:** SSR for landing pages via Next.js.
+- **Monetization:** 10% platform fee on Premium books.
+- **Deployment:** Nginx on Linux with custom URL and DNS.
+
+## Review Focus
+- **Network Drop:** User's internet speed drops mid-page; system must scale down packet size/quality without crashing.
+- **Sync Drift:** Audio and text drift apart over long durations; system must snap back to the `SyncMap` timestamp.
+- **Encryption Failure:** Corrupted E2EE packets; system must detect checksum failure and request a re-transmit.
+- **Concurrency:** Multiple readers on the same book; server must handle independent session markers.
+- **Payment Bypass:** Attempting to access "Locked" packets via direct API call; server must enforce purchase verification.
+
+---
+
+## File Structure
+
+### Backend (Next.js API / Node.js)
+- `src/lib/db/schema.ts`: Prisma/PostgreSQL schema definitions.
+- `src/lib/transport/packet-manager.ts`: Logic for adaptive chunking and RTT measurement.
+- `src/lib/security/encryption.ts`: E2EE logic (Web Crypto API wrappers).
+- `src/lib/auth/roles.ts`: Logic for Reader vs Author roles.
+- `src/app/api/books/route.ts`: Book management and packet delivery.
+- `src/app/api/payments/route.ts`: Payment processing and unlock logic.
+- `src/app/api/admin/review/route.ts`: Book submission and approval pipeline.
+
+### Frontend (Next.js)
+- `src/components/reader/ReaderCanvas.tsx`: The main cinematic reading area.
+- `src/components/reader/VisualSideFrame.tsx`: The animated image panel.
+- `src/components/reader/ReadingMarker.tsx`: The glowing pointer/highlight.
+- `src/components/admin/GlassPanel.tsx`: Base glassmorphism layout component.
+- `src/components/admin/AuthorDashboard.tsx`: Analytics and management view.
+- `src/components/onboarding/RoleGateway.tsx`: Reader vs Author selection screen.
+- `src/hooks/usePacketStream.ts`: Hook for adaptive data fetching and buffering.
+- `src/hooks/useReadingSync.ts`: Hook for mapping pointer position to visuals/audio.
+
+---
+
+## Implementation Tasks
+
+### Task 1: Infrastructure & Database Setup
+**Files:**
+- Create: `src/lib/db/schema.ts`
+- Modify: `.env`
+
+**Interfaces:**
+- Produces: Database connection and schema for all subsequent tasks.
+
+- [ ] **Step 1: Define PostgreSQL schema** (Books, AtomicSegments, SyncMap, UserSessions, Analytics).
+- [ ] **Step 2: Setup Prisma/DB client** and run initial migration.
+- [ ] **Step 3: Verify DB connectivity** with a simple health check script.
+- [ ] **Step 4: Commit**
+
+### Task 2: Role Gateway & Onboarding
+**Files:**
+- Create: `src/components/onboarding/RoleGateway.tsx`
+- Create: `src/app/onboarding/page.tsx`
+- Create: `src/lib/auth/roles.ts`
+
+**Interfaces:**
+- Produces: `userRole` state (Reader | Author) stored in session/cookie.
+
+- [ ] **Step 1: Implement `RoleGateway` UI** (Glassmorphism style).
+- [ ] **Step 2: Implement role selection logic** and persistence in cookies.
+- [ ] **Step 3: Create redirect logic** (Reader $\rightarrow$ /library, Author $\rightarrow$ /admin).
+- [ ] **Step 4: Commit**
+
+### Task 3: The "OSI" Transport Layer (Backend)
+**Files:**
+- Create: `src/lib/transport/packet-manager.ts`
+- Create: `src/app/api/books/packets/route.ts`
+
+**Interfaces:**
+- Produces: `getPacket(bookId, segmentId, quality)` function.
+
+- [ ] **Step 1: Implement `AtomicSegment` retrieval logic** from DB.
+- [ ] **Step 2: Implement packet splitting logic** (Adaptive based on `quality` param).
+- [ ] **Step 3: Add checksum generation** for each packet.
+- [ ] **Step 4: Commit**
+
+### Task 4: The "OSI" Transport Layer (Frontend)
+**Files:**
+- Create: `src/hooks/usePacketStream.ts`
+
+**Interfaces:**
+- Consumes: `src/app/api/books/packets/route.ts`
+- Produces: `currentPacket` state and `latency` measurement.
+
+- [ ] **Step 1: Implement network probe** to measure RTT on load.
+- [ ] **Step 2: Implement the `usePacketStream` hook** to request chunks based on speed.
+- [ ] **Step 3: Add buffering logic** to pre-fetch the next 3 segments.
+- [ ] **Step 4: Commit**
+
+### Task 5: The Reactive Reading Engine (Pointer & Sync)
+**Files:**
+- Create: `src/components/reader/ReaderCanvas.tsx`
+- Create: `src/components/reader/ReadingMarker.tsx`
+- Create: `src/hooks/useReadingSync.ts`
+
+**Interfaces:**
+- Consumes: `usePacketStream`
+- Produces: `activeCharIndex` and `activeVisualId`.
+
+- [ ] **Step 1: Implement `ReaderCanvas`** with high-readability typography.
+- [ ] **Step 2: Implement `onpointer` tracking** to calculate `activeCharIndex`.
+- [ ] **Step 3: Implement `ReadingMarker`** that highlights text at `activeCharIndex`.
+- [ ] **Step 4: Create `useReadingSync`** to map `activeCharIndex` $\rightarrow$ `SyncMap` data.
+- [ ] **Step 5: Commit**
+
+### Task 6: The Visual Side-Frame & Audio Sync
+**Files:**
+- Create: `src/components/reader/VisualSideFrame.tsx`
+- Modify: `src/components/reader/ReaderCanvas.tsx`
+
+**Interfaces:**
+- Consumes: `activeVisualId` from `useReadingSync`.
+
+- [ ] **Step 1: Implement `VisualSideFrame`** with Framer Motion morphing transitions.
+- [ ] **Step 2: Integrate Web Audio API** for audio playback synced to `activeCharIndex`.
+- [ ] **Step 3: Implement "Book Marker" pause/resume logic** (saving state to DB).
+- [ ] **Step 4: Commit**
+
+### Task 7: Author Submission & Review Pipeline
+**Files:**
+- Create: `src/components/admin/SubmissionPortal.tsx`
+- Create: `src/app/api/admin/review/route.ts`
+- Create: `src/app/admin/review/page.tsx`
+
+**Interfaces:**
+- Produces: Books with state `Pending` $\rightarrow$ `Accepted`.
+
+- [ ] **Step 1: Build `SubmissionPortal`** for uploading text, audio, and visuals.
+- [ ] **Step 2: Implement backend logic** to tokenize text into `AtomicSegments` and `SyncMap`.
+- [ ] **Step 3: Build Reviewer Dashboard** to approve/reject submissions.
+- [ ] **Step 4: Commit**
+
+### Task 8: Monetization & Access Control
+**Files:**
+- Create: `src/app/api/payments/route.ts`
+- Modify: `src/lib/transport/packet-manager.ts`
+- Modify: `src/lib/security/encryption.ts`
+
+**Interfaces:**
+- Consumes: User payment status.
+- Produces: Decrypted content packets.
+
+- [ ] **Step 1: Implement "Open" vs "Premium" flag in Book entity.**
+- [ ] **Step 2: Implement E2EE logic** for Premium packets.
+- [ ] **Step 3: Create payment verification middleware** for the packet route.
+- [ ] **Step 4: Implement the 10% platform fee logic** on checkout.
+- [ ] **Step 5: Commit**
+
+### Task 9: The "Perfect Glass" Admin Panel
+**Files:**
+- Create: `src/components/admin/GlassPanel.tsx`
+- Create: `src/components/admin/AuthorDashboard.tsx`
+
+**Interfaces:**
+- Consumes: `Analytics` table from DB.
+
+- [ ] **Step 1: Implement `GlassPanel`** base styling (blur, transparency, borders).
+- [ ] **Step 2: Build the "Live Heatmap"** visualization for reader engagement.
+- [ ] **Step 3: Build the Packet Efficiency graph** using the `Analytics` data.
+- [ ] **Step 4: Commit**
+
+### Task 10: SEO & Production Deployment
+**Files:**
+- Create: `src/app/layout.tsx` (Meta updates)
+- Create: `nginx.conf`
+- Create: `deploy.sh`
+
+**Interfaces:**
+- Produces: Live site at custom URL.
+
+- [ ] **Step 1: Implement `JSON-LD` schema** and dynamic meta tags for books.
+- [ ] **Step 2: Configure Next.js SSR/SSG** for landing pages.
+- [ ] **Step 3: Write Nginx config** for reverse proxy and SSL termination.
+- [ ] **Step 4: Create deployment script** for Linux server.
+- [ ] **Step 5: Commit**

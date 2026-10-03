@@ -1,0 +1,17 @@
+C:\Users\johnp\AppData\Local\npm-cache\_npx\1bf7c3c15bf47d04\node_modules\ts-node\dist\configuration.js:91
+    const { fileExists = ts.sys.fileExists, readFile = ts.sys.readFile, skipProject = index_1.DEFAULTS.skipProject, project = index_1.DEFAULTS.project, tsTrace = index_1.DEFAULTS.tsTrace, } = rawApiOptions;
+                                ^
+
+TypeError: Cannot read properties of undefined (reading 'fileExists')
+    at readConfig (C:\Users\johnp\AppData\Local\npm-cache\_npx\1bf7c3c15bf47d04\node_modules\ts-node\dist\configuration.js:91:33)
+    at findAndReadConfig (C:\Users\johnp\AppData\Local\npm-cache\_npx\1bf7c3c15bf47d04\node_modules\ts-node\dist\configuration.js:50:84)
+    at phase3 (C:\Users\johnp\AppData\Local\npm-cache\_npx\1bf7c3c15bf47d04\node_modules\ts-node\dist\bin.js:254:67)
+    at bootstrap (C:\Users\johnp\AppData\Local\npm-cache\_npx\1bf7c3c15bf47d04\node_modules\ts-node\dist\bin.js:47:30)
+    at main (C:\Users\johnp\AppData\Local\npm-cache\_npx\1bf7c3c15bf47d04\node_modules\ts-node\dist\bin.js:33:12)
+    at Object.<anonymous> (C:\Users\johnp\AppData\Local\npm-cache\_npx\1bf7c3c15bf47d04\node_modules\ts-node\dist\bin.js:579:5)
+    at Module._compile (node:internal/modules/cjs/loader:1871:14)
+    at Object..js (node:internal/modules/cjs/loader:2002:10)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+
+Node.js v24.18.0

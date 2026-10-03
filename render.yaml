@@ -1,0 +1,48 @@
+services:
+  # --- Backend API & WebSocket Server ---
+  - type: web
+    name: multimodal-backend
+    env: node
+    plan: free # Change to 'starter' for persistence/better performance
+    buildCommand: npm install && npx prisma generate
+    startCommand: npx ts-node src/server/index.ts
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: multimodal-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: multimodal-redis
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+
+  # --- Next.js Frontend ---
+  - type: web
+    name: multimodal-frontend
+    env: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_SOCKET_URL
+        fromService:
+          name: multimodal-backend
+          property: host
+
+  # --- PostgreSQL Database ---
+  - type: pg
+    name: multimodal-db
+    plan: free
+    disk: 1GB
+
+  #H --- Redis Cache ---
+  - type: redis
+    name: multimodal-redis
+    plan: free
+    ipAllowList: [] # Restrict to internal services only
